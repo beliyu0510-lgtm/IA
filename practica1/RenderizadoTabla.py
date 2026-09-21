@@ -1,112 +1,114 @@
-"""The aim of this script is to get a pretty environment"""
-"""This code was made by Gemini"""
+## Generado por Chaty, aunque faltan cambios porque no hay brisa y obviamente no puedo estar atrapada entre pozos, eso es cosa del
+## archivo de generacionTablero
 
-## Este codigo no me gusta va muy lento y encima es feo
-
+import gymnasium as gym
 import pygame
-import sys
 
-class VisualizadorWumpus:
-    def __init__(self, N, tamaño_celda=120):
-        pygame.init()
+from GeneracionTablero import generate_table
+
+
+class WumpusEnv(gym.Env):
+
+    def __init__(self, N=5, prob_well=0.3):
+        super().__init__()
+
         self.N = N
-        self.tamaño_celda = tamaño_celda
-        self.ancho = N * tamaño_celda
-        self.alto = N * tamaño_celda
-        
-        # Crear la ventana con flag de doble buffer para máxima fluidez
-        self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
-        pygame.display.set_caption("Mundo del Wumpus - Visualizador")
-        
-        # Cargar las fuentes UNA SOLA VEZ en el init (no en el bucle de render)
-        self.fuente_texto = pygame.font.SysFont("arial", 12, bold=True)
-        self.fuente_etiquetas = pygame.font.SysFont("arial", 11)
+        self.prob_well = prob_well
 
-    def renderizar(self, tablero_real, pos_agente=(1, 1), pisadas=None):
-        """Dibuja el estado del juego usando figuras geométricas limpias y rápidas."""
-        if pisadas is None:
-            pisadas = set()
+        self.table = None
 
-        # Evitar congelamiento procesando eventos
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+        self.window = None
+        self.cell_size = 100
+        self.action_space = gym.spaces.Discrete(4)
 
-        # Paleta de Colores
-        COLOR_FONDO = (245, 245, 245)
-        COLOR_GRID = (180, 180, 180)
-        COLOR_VISITADO = (220, 235, 252)
-        
-        COLOR_AGENTE = (41, 128, 185)    # Azul
-        COLOR_WUMPUS = (192, 57, 43)    # Rojo
-        COLOR_POZO = (44, 62, 80)       # Negro/Gris Oscuro
-        COLOR_ORO = (241, 196, 15)      # Dorado
-        COLOR_BRISA = (135, 206, 235)   # Cían / Azul Brisa
-        COLOR_HEDOR = (142, 68, 173)    # Morado
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
 
-        self.pantalla.fill(COLOR_FONDO)
+        self.table = generate_table(
+            N=self.N,
+            prob_well=self.prob_well
+        )
 
-        for x in range(1, self.N + 1):
-            for y in range(1, self.N + 1):
-                pos = (x, y)
-                celda = tablero_real[pos]
+        return self.table, {}
 
-                # Inversión de eje Y para formato cartesiano
-                px = (x - 1) * self.tamaño_celda
-                py = (self.N - y) * self.tamaño_celda
+    def render(self):
+        if self.window is None:
+            pygame.init()
 
-                rect = pygame.Rect(px, py, self.tamaño_celda, self.tamaño_celda)
+            size = self.N * self.cell_size
 
-                # 1. Fondo de casillas visitadas
-                if pos in pisadas:
-                    pygame.draw.rect(self.pantalla, COLOR_VISITADO, rect)
+            self.window = pygame.display.set_mode(
+                (size, size)
+            )
 
-                # 2. Borde de la casilla
-                pygame.draw.rect(self.pantalla, COLOR_GRID, rect, 2)
+            pygame.display.set_caption("Wumpus World")
 
-                cx, cy = px + self.tamaño_celda // 2, py + self.tamaño_celda // 2
+        self.window.fill((255, 255, 255))
 
-                # 3. Dibujar Elementos Principales (Si existen)
-                if celda["Well"]:
-                    # Pozo: Círculo negro grande
-                    pygame.draw.circle(self.pantalla, COLOR_POZO, (cx, cy), self.tamaño_celda // 3)
-                
-                if celda["Wumpus"]:
-                    # Wumpus: Triángulo/Monstruo rojo
-                    puntos = [(cx, cy - 25), (cx - 20, cy + 20), (cx + 20, cy + 20)]
-                    pygame.draw.polygon(self.pantalla, COLOR_WUMPUS, puntos)
-                    
-                if celda["Gold"]:
-                    # Oro: Rombo/Diamante dorado
-                    puntos = [(cx, cy - 20), (cx + 20, cy), (cx, cy + 20), (cx - 20, cy)]
-                    pygame.draw.polygon(self.pantalla, COLOR_ORO, puntos)
+        for (x, y), state in self.table.items():
 
-                if pos == pos_agente:
-                    # Agente: Círculo azul brillante en el centro
-                    pygame.draw.circle(self.pantalla, COLOR_AGENTE, (cx, cy), 18)
-                    pygame.draw.circle(self.pantalla, (255, 255, 255), (cx, cy), 18, 3) # Borde blanco
+            px = (x - 1) * self.cell_size
+            py = (y - 1) * self.cell_size
 
-                # 4. Dibujar Percepciones (Indicadores de texto / puntos de color)
-                percepciones_txt = []
-                if celda["Breeze"]:
-                    percepciones_txt.append("Brisa")
-                if celda["Reek"]:
-                    percepciones_txt.append("Hedor")
+            rect = pygame.Rect(
+                px,
+                py,
+                self.cell_size,
+                self.cell_size
+            )
 
-                if percepciones_txt:
-                    txt = " | ".join(percepciones_txt)
-                    col = COLOR_HEDOR if "Hedor" in txt else COLOR_BRISA
-                    surf_perc = self.fuente_etiquetas.render(txt, True, col)
-                    self.pantalla.blit(surf_perc, (px + 8, py + self.tamaño_celda - 20))
+            # Casilla
+            pygame.draw.rect(
+                self.window,
+                (220, 220, 220),
+                rect
+            )
 
-                # 5. Coordenadas (x,y) en la esquina superior izquierda
-                surf_coord = self.fuente_etiquetas.render(f"({x},{y})", True, (150, 150, 150))
-                self.pantalla.blit(surf_coord, (px + 6, py + 4))
+            # Borde
+            pygame.draw.rect(
+                self.window,
+                (0, 0, 0),
+                rect,
+                2
+            )
 
-        # Actualizar la pantalla de una vez
+            # Pozo
+            if state["Well"]:
+                pygame.draw.circle(
+                    self.window,
+                    (0, 0, 0),
+                    rect.center,
+                    25
+                )
+
+            # Wumpus
+            if state["Wumpus"]:
+                pygame.draw.circle(
+                    self.window,
+                    (200, 0, 0),
+                    rect.center,
+                    25
+                )
+
+            # Oro
+            if state["Gold"]:
+                pygame.draw.circle(
+                    self.window,
+                    (255, 215, 0),
+                    rect.center,
+                    20
+                )
+
         pygame.display.flip()
 
-    # Alias para compatibilidad con main
-    def dibujar(self, tablero_real, pos_agente=(1, 1), pisadas=None):
-        self.renderizar(tablero_real, pos_agente, pisadas)
+    def close(self):
+        if self.window is not None:
+            pygame.quit()
+            self.window = None
+
+
+# Registrar el entorno
+gym.register(
+    id="WumpusWorld-v0",
+    entry_point="RenderizadoTabla:WumpusEnv"
+)
