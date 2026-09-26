@@ -31,7 +31,7 @@ def id_var(concept, x,y): #Esta función se hace porque el ordenador solo entien
         x (int): x coordinate
         y (int): y coordinate
     """
-    codes = {"Well":100, "Breeze":200, "Reek":300, "Wumpus":400}
+    codes = {"Well":100, "Breeze":200, "Reek":300, "Wumpus":400, "Bright": 500, "Gold":600}
     return codes[concept] + x*10 + y #esto devuelve por ejemplo 311 -> Hedor en (1,1)
 
 def generate_rules(N) -> list:
@@ -60,7 +60,7 @@ def generate_rules(N) -> list:
 
             rules.append([-b_var] + well)
             for pozo in well:
-                rules.append([-pozo] + b_var)
+                rules.append([-pozo] + [b_var])
 
             # Rules for Reek (Reek <=> (Wumpus1, Wumpus2...))
             r_var = (id_var('Reek', x, y))
@@ -68,7 +68,17 @@ def generate_rules(N) -> list:
 
             rules.append([-r_var] + wumpus)
             for wps in wumpus:
-                rules.append([-wps] + r_var)
+                rules.append([-wps] + [r_var])
+
+            # Rules for Bright (Resplandor <=> Oro)
+            # ============== Pasamos a FNC ================ #
+            # (R => O) ∧ (O => R); (¬R v O) ∧ (¬O v R);
+            bt_var = (id_var('Bright', x, y))
+            gold = (id_var('Gold', x, y))
+            rules.append([-bt_var, gold])
+            rules.append([-gold, bt_var])
+
+    return rules
                 
 
 

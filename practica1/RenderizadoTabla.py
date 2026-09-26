@@ -26,15 +26,14 @@ class WumpusEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
+    
         self.table, self.agent_position = generate_table(
             N=self.N,
             prob_well=self.prob_well
         )
-        self.agent_position = (1,1)
-
+    
         return self.table, {}
-
+    
     def render(self):
         if self.window is None:
             pygame.init()
