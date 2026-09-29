@@ -1,5 +1,7 @@
-## Generado por Chaty, aunque faltan cambios porque no hay brisa y obviamente no puedo estar atrapada entre pozos, eso es cosa del
-## archivo de generacionTablero
+"""This script contains the render of the table"""
+
+## Código generado por Chatgpt para la renderización del tablero, el único cambio a descatar es el uso de la librería load_emoji
+## para usar emojis en vez de círculos o cuadrados de colores que inicialmente genera la IA. 
 
 import gymnasium as gym
 import pygame

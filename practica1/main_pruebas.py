@@ -9,9 +9,10 @@ def main():
     # CREAR EL ENTORNO
     # ==========================================
 
+    n = 3
     env = gym.make(
         "WumpusWorld-v0",
-        N=3,
+        N=n,
         prob_well=0.3,
         disable_env_checker=True
     )
@@ -30,7 +31,7 @@ def main():
     # CREAR EL AGENTE
     # ==========================================
 
-    agent = Agent(N=4)
+    agent = Agent(n)
 
     # El agente empieza en la misma posición
     # que ha generado el entorno

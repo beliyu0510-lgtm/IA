@@ -1,7 +1,7 @@
 """Ejercicio 1. SAT-Solver"""
 
 from GeneracionNormas import id_var, generate_rules
-from DPLL import dpll
+from DPLL_new import dpll
 import random
 
 class Agent:
@@ -100,7 +100,8 @@ class Agent:
                 uncertain_moves.append(position)
 
         if uncertain_moves:
-            self.position = random.choice(uncertain_moves)
+            position = random.choice(uncertain_moves)
+            self.position = position
             self.visited.append(position)
             self.path.append(position)
             return True
