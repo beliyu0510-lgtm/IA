@@ -121,6 +121,7 @@ def main():
         # --------------------------------------
 
         env.unwrapped.agent_position = agent.position
+        input("Haz la captura y pulsa ENTER para continuar...")
 
         print(
             f"\n→ El agente se mueve a "
@@ -172,6 +173,7 @@ def main():
         # --------------------------------------
 
         env.render()
+
 
     # ==========================================
     # CERRAR EL ENTORNO
