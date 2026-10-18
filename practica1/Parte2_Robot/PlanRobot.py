@@ -46,10 +46,10 @@ def initial_state(world):
         ("En", CAJA, world.caja),
     })
 
-def position(object,s):
-    """Busca en la situación s el flujo ('En', object, x) y devuelve x. Si no existe, devuelve None"""
+def position(objeto, s):
+    """Busca en la situación s el fluente ('En', objeto, x) y devuelve x. Si no existe, devuelve None"""
     for f in s:
-        if f[0] == 'En' and f[1] == object:
+        if f[0] == 'En' and f[1] == objeto:
             return f[2]
     return None
 
@@ -80,10 +80,9 @@ def acciones_posibles(mundo, s):
 def efecto_pos(mundo, a, s):
     if a[0] == 'Ir':
         _,x,y = a
-        efectos = {('En', AGENTE, y)}
-        if ('Sosteniendo', CAJA) in s:
-            efectos.add(('En', CAJA, y))
-        return efectos
+        # Mientras la caja está sostenida no tiene fluente En(C, ·):
+        # su posición es implícitamente la del agente.
+        return {('En', AGENTE, y)}
 
     if a[0] == "Coger":
         return {('Sosteniendo', CAJA)}
@@ -95,10 +94,7 @@ def efecto_pos(mundo, a, s):
 def efecto_neg(mundo, a, s):
     if a[0] == 'Ir':
         _, x, y = a
-        efectos = {("En", AGENTE, x)}
-        if ("Sosteniendo", CAJA) in s:
-            efectos.add(("En", CAJA, x))
-        return efectos
+        return {("En", AGENTE, x)}
     if a[0] == "Coger":
         # La caja deja de estar "en" su casilla al sostenerla
         return {("En", CAJA, position(CAJA, s))}

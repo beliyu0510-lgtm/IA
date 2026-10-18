@@ -9,10 +9,9 @@ def main():
     # CREAR EL ENTORNO
     # ==========================================
 
-    n = 3
     env = gym.make(
         "WumpusWorld-v0",
-        N=n,
+        N=3,
         prob_well=0.3,
         disable_env_checker=True
     )
@@ -31,7 +30,7 @@ def main():
     # CREAR EL AGENTE
     # ==========================================
 
-    agent = Agent(n)
+    agent = Agent(N=4)
 
     # El agente empieza en la misma posición
     # que ha generado el entorno
@@ -121,7 +120,6 @@ def main():
         # --------------------------------------
 
         env.unwrapped.agent_position = agent.position
-        input("Haz la captura y pulsa ENTER para continuar...")
 
         print(
             f"\n→ El agente se mueve a "
@@ -173,7 +171,6 @@ def main():
         # --------------------------------------
 
         env.render()
-
 
     # ==========================================
     # CERRAR EL ENTORNO
