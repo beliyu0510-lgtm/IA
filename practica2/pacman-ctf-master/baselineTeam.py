@@ -32,7 +32,7 @@ from util import nearestPoint
 #################
 
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
-               first = 'OffensiveReflexAgent', second = 'DefensiveReflexAgent', third = 'DefensiveReflexAgent'):
+               first = 'OffensiveReflexAgent', second = 'OffensiveReflexAgent', third = 'OffensiveReflexAgent'):
   """
   Devuelve el equipo de 3 agentes: 1 atacante + 2 defensores
 
@@ -119,28 +119,53 @@ class ReflexCaptureAgent(CaptureAgent):
     """
     return {'successorScore': 1.0}
 
+
 class OffensiveReflexAgent(ReflexCaptureAgent):
-  """
-  A reflex agent that seeks food. This is an agent
-  we give you to get an idea of what an offensive agent might look like,
-  but it is by no means the best or only way to build an offensive agent.
-  """
-  def getFeatures(self, gameState, action):
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-    foodList = self.getFood(successor).asList()    
-    features['successorScore'] = -len(foodList)#self.getScore(successor)
+    """
+    En territorio propio: defender y perseguir invasores.
+    En territorio enemigo: buscar comida.
+    Si lleva comida: regresar a casa.
+    """
 
-    # Compute distance to the nearest food
+    
+    def chooseAction(self, gameState):
+        actions = gameState.getLegalActions(self.index)
 
-    if len(foodList) > 0: # This should always be True,  but better safe than sorry
-      myPos = successor.getAgentState(self.index).getPosition()
-      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = minDistance
-    return features
+        if not actions:
+            return Directions.STOP
 
-  def getWeights(self, gameState, action):
-    return {'successorScore': 100, 'distanceToFood': -1}
+        myState = gameState.getAgentState(self.index)
+
+        # Si lleva algo, vuelve a su propia bandera.
+        # Si no lleva nada, va hacia la bandera enemiga.
+        if myState.numCarrying > 0:
+            target = gameState.getFlagHome(self.red)
+        else:
+            target = gameState.getFlagHome(not self.red)
+
+        bestDistance = float('inf')
+        bestActions = []
+
+        for action in actions:
+            successor = self.getSuccessor(gameState, action)
+            newPos = successor.getAgentState(self.index).getPosition()
+
+            distance = self.getMazeDistance(newPos, target)
+
+            if distance < bestDistance:
+                bestDistance = distance
+                bestActions = [action]
+            elif distance == bestDistance:
+                bestActions.append(action)
+
+        return random.choice(bestActions)
+
+    def getFeatures(self, gameState, action):
+        return {}
+
+    def getWeights(self, gameState, action):
+        return {}
+
 
 class DefensiveReflexAgent(ReflexCaptureAgent):
   """
