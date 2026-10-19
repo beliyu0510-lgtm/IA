@@ -31,13 +31,10 @@ from util import nearestPoint
 # Team creation #
 #################
 
-def createTeam(firstIndex, secondIndex, isRed,
-               first = 'OffensiveReflexAgent', second = 'DefensiveReflexAgent'):
+def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
+               first = 'OffensiveReflexAgent', second = 'DefensiveReflexAgent', third = 'DefensiveReflexAgent'):
   """
-  This function should return a list of two agents that will form the
-  team, initialized using firstIndex and secondIndex as their agent
-  index numbers.  isRed is True if the red team is being created, and
-  will be False if the blue team is being created.
+  Devuelve el equipo de 3 agentes: 1 atacante + 2 defensores
 
   As a potentially helpful development aid, this function can take
   additional string-valued keyword arguments ("first" and "second" are
@@ -47,7 +44,7 @@ def createTeam(firstIndex, secondIndex, isRed,
   any extra arguments, so you should make sure that the default
   behavior is what you want for the nightly contest.
   """
-  return [eval(first)(firstIndex), eval(second)(secondIndex)]
+  return [eval(first)(firstIndex), eval(second)(secondIndex), eval(third)(thirdIndex)]
 
 ##########
 # Agents #
@@ -64,31 +61,26 @@ class ReflexCaptureAgent(CaptureAgent):
 
   def chooseAction(self, gameState):
     """
-    Picks among the actions with the highest Q(s,a).
+    Si lleva la bandera enemiga, va a la casilla base de la suya.
+    Si no, elige entre las acciones con mayor Q(s,a).
     """
     actions = gameState.getLegalActions(self.index)
 
-    # You can profile your evaluation time by uncommenting these lines
-    # start = time.time()
-    values = [self.evaluate(gameState, a) for a in actions]
-    # print('eval time for agent %d: %.4f' % (self.index, time.time() - start))
-
-    maxValue = max(values)
-    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-
-    foodLeft = len(self.getFood(gameState).asList())
-
-    if foodLeft <= 2:
+    if gameState.getAgentState(self.index).numCarrying > 0:
+      home = gameState.getFlagHome(self.red)
       bestDist = 9999
       for action in actions:
         successor = self.getSuccessor(gameState, action)
         pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(self.start,pos2)
+        dist = self.getMazeDistance(home, pos2)
         if dist < bestDist:
           bestAction = action
           bestDist = dist
       return bestAction
 
+    values = [self.evaluate(gameState, a) for a in actions]
+    maxValue = max(values)
+    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
     return random.choice(bestActions)
 
   def getSuccessor(self, gameState, action):

@@ -545,6 +545,19 @@ class PacmanGraphics:
       return False
     return walls[x][y]
 
+# Añadido, dibujar la bandera ================================= #
+  def drawFlag(self, pos, color):
+    """
+    Dibuja una bandera (mástil + banderín) en la celda pos.
+    Es UN solo polígono, así removeFood la borra igual que un punto.
+    """
+    cx, cy = self.to_screen(pos)
+    g = self.gridSize
+    shape = [(-0.30, 0.45), (-0.30, -0.45), (0.40, -0.20), (-0.20, 0.05), (-0.20, 0.45)]
+    coords = [(cx + dx * g, cy + dy * g) for dx, dy in shape]
+    return polygon(coords, FOOD_COLOR, color, filled=1, smoothed=0, width=1)
+# ==============================================================#
+
   def drawFood(self, foodMatrix ):
     foodImages = []
     color = FOOD_COLOR
@@ -555,12 +568,15 @@ class PacmanGraphics:
       foodImages.append(imageRow)
       for yNum, cell in enumerate(x):
         if cell: # There's food here
-          screen = self.to_screen((xNum, yNum ))
-          dot = circle( screen,
-                        FOOD_SIZE * self.gridSize,
-                        outlineColor = color, fillColor = color,
-                        width = 1)
-          imageRow.append(dot)
+          if (xNum, yNum) in self.layout.flags:      # NUEVO: es una bandera
+            imageRow.append(self.drawFlag((xNum, yNum), color))
+          else:
+            screen = self.to_screen((xNum, yNum ))
+            dot = circle( screen,
+                          FOOD_SIZE * self.gridSize,
+                          outlineColor = color, fillColor = color,
+                          width = 1)
+            imageRow.append(dot)
         else:
           imageRow.append(None)
     return foodImages
@@ -589,6 +605,12 @@ class PacmanGraphics:
       if (x * 2) >= layout.width:
         color = TEAM_COLORS[1]
 
+# AÑADIDO: la bandera vuelve a su base ================================ #
+      if pos in layout.flags:
+        foodImages[x][y] = self.drawFlag(pos, color)
+        return
+# ==================================================================== #
+      
       screen = self.to_screen(pos)
       dot = circle(screen,
                   FOOD_SIZE * self.gridSize,

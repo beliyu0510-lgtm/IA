@@ -31,6 +31,7 @@ class Layout:
         self.food = Grid(self.width, self.height, False)
         self.capsules = []
         self.agentPositions = []
+        self.flags = [] # Base de cada bandera
         self.numGhosts = 0
         self.processLayoutText(layoutText)
         self.layoutText = layoutText
@@ -103,6 +104,8 @@ class Layout:
          o - Capsule
          G - Ghost
          P - Pacman
+         F - Flag (una por campo)
+         1-6 - Posiciones de inicio de los agentes (impares: rojo, pares: azul)
         Other characters are ignored.
         """
         maxY = self.height - 1
@@ -125,7 +128,10 @@ class Layout:
         elif layoutChar in ['G']:
             self.agentPositions.append( (1, (x, y) ) )
             self.numGhosts += 1
-        elif layoutChar in  ['1', '2', '3', '4']:
+        elif layoutChar == 'F': #Flag
+            self.flags.append((x,y))
+            self.food[x][y] = True
+        elif layoutChar in  ['1', '2', '3', '4', '5', '6']:
             self.agentPositions.append( (int(layoutChar), (x,y)))
             self.numGhosts += 1
 def getLayout(name, back = 2):

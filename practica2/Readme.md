@@ -1,7 +1,6 @@
 """Esquema mental de lo que debemos hacer:
 - Cuadro general de la práctica: Queremos hacer un multiagente clásico de dos equuipos de 3 agentes en un juego de captura de la bandera con fase pacman/fantasma, donde
-el problema central es resolver los conflictos dentro de un equipo. Quién ataca, quién defiende y quién se mueve por dónde se dedice en cada momento y por negociación, no con
-roles fijados de antemano
+el problema central es resolver los conflictos dentro de un equipo. Quién ataca, quién defiende y quién se mueve por dónde se decide en cada momento y por negociación, no con roles fijados de antemano
 - Se hará uso del algoritmo será ContractNetProtocol
 - Formalización del problema:
     - 3 agentes por equipo, autónomos, con vista local del tablero y comunicación solo dentro de su equipo
@@ -10,7 +9,7 @@ roles fijados de antemano
     - Conflictos (con la tipología de la clase)
 - Conflictos:
     - Quién ataca y quién defiende cada zona --> ContractNet (negociación)
-    - Dos agentes quieren la misma casilla o pasillo --> arbitrahe por prioridad
+    - Dos agentes quieren la misma casilla o pasillo --> arbitraje por prioridad
     - Cada agente cree que el rival está en un sitio distinto --> consenso por broadcast
     - El atacante quiere huir, el equipo necesita que cubra --> arbitraje por reglas
 

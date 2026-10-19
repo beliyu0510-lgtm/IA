@@ -58,7 +58,7 @@ from game import Grid
 from game import Configuration
 from game import Agent
 from game import reconstituteGrid
-import sys, util, types, time, random, importlib
+import sys, util, types, time, random, importlib, importlib.util
 import keyboardAgents
 
 # If you change these, you won't affect the server, so you can't cheat
@@ -66,10 +66,8 @@ KILL_POINTS = 0
 SONAR_NOISE_RANGE = 13 # Must be odd
 SONAR_NOISE_VALUES = [i - (SONAR_NOISE_RANGE - 1)/2 for i in range(SONAR_NOISE_RANGE)]
 SIGHT_RANGE = 5 # Manhattan distance
-MIN_FOOD = 2
-TOTAL_FOOD = 60
-
-DUMP_FOOD_ON_DEATH = True # if we have the gameplay element that dumps dots on death
+## Eliminamos la comida, y añadimos 3 agentes por equipo 
+AGENTS_PER_TEAM = 3
 
 SCARED_TIME = 40
 
@@ -165,6 +163,32 @@ class GameState:
 
   def getBlueCapsules(self):
     return halfList(self.data.capsules, self.data.food, red = False)
+
+  # ===================== Añadido para nuestro juego =================== #
+  def getFlagHome(self, red):
+    """Posición base de la bandera roja o azul"""
+    for pos in self.data.layout.flags:
+      if self.isRed(pos) == red:
+        return pos
+
+  def isFlagHome(self, red):
+    x, y = self.getFlagHome(red)
+    return self.data.food[x][y]
+
+  def getFlagCarrier(self,red):
+    """Índice del enemigo que lleva la bandera de red, o None"""
+    enemies = self.getBlueTeamIndices() if red else self.getRedTeamIndices()
+    for i in enemies:
+      if self.data.agentStates[i].numCarrying > 0:
+        return i
+    return None
+
+  def getCaptures(self, red):
+    """Banderas enemigas que ha llevado a casa el equipo"""
+    team = self.getRedTeamIndices() if red else self.getBlueTeamIndices()
+    return sum(self.data.agentStates[i].numReturned for i in team)
+
+  # ====================================================================== #
 
   def getWalls(self):
     """
@@ -318,8 +342,13 @@ class GameState:
     self.teams = [self.isRed(p) for p in positions]
     #This is usually 60 (always 60 with random maps)
     #However, if layout map is specified otherwise, it could be less
-    global TOTAL_FOOD
-    TOTAL_FOOD = layout.totalFood
+
+# Añadido: número mínimo de agentes en cada equipo, y una bandera por equipo #
+    if len(self.redTeam) != AGENTS_PER_TEAM or len(self.blueTeam) != AGENTS_PER_TEAM:
+      raise Exception('El mapa necesita %d agentes por equipo (dígitos 1-%d)' % (AGENTS_PER_TEAM, 2*AGENTS_PER_TEAM))
+    if len(layout.flags) != 2 or len([p for p in layout.flags if self.isRed(p)]) != 1:
+      raise Exception('El mapa necesita exactamente una bandera F en cada mitad')
+# ======================================================================== #
 
   def isRed(self, configOrPos):
     width = self.data.layout.width
@@ -376,8 +405,6 @@ class CaptureRules:
     game.state.data.timeleft = length
     if 'drawCenterLine' in dir(display):
       display.drawCenterLine()
-    self._initBlueFood = initState.getBlueFood().count()
-    self._initRedFood = initState.getRedFood().count()
     return game
 
   def process(self, state, game):
@@ -391,35 +418,24 @@ class CaptureRules:
     if state.isOver():
       game.gameOver = True
       if not game.rules.quiet:
-        redCount = 0
-        blueCount = 0
-        foodToWin = (TOTAL_FOOD/2) - MIN_FOOD
-        for index in range(state.getNumAgents()):
-          agentState = state.data.agentStates[index]
-          if index in state.getRedTeamIndices():
-            redCount += agentState.numReturned
+        if state.getCaptures(True) > 0:
+          print('El equipo rojo llevó la bandera del equipo azul a su base')
+        elif state.getCaptures(False) > 0:
+          print('El equipo Azul llevó la bandera del equipo rojo a su base')
+        else:
+          print('Tiempo máximo alcanzado')
+          if state.data.score == 0:
+            print('¡Empate!')
           else:
-            blueCount += agentState.numReturned
-        
-        if blueCount >= foodToWin:#state.getRedFood().count() == MIN_FOOD:
-          print('The Blue team has returned at least %d of the opponents\' dots.' % foodToWin)
-        elif redCount >= foodToWin:#state.getBlueFood().count() == MIN_FOOD:
-          print('The Red team has returned at least %d of the opponents\' dots.' % foodToWin)
-        else:#if state.getBlueFood().count() > MIN_FOOD and state.getRedFood().count() > MIN_FOOD:
-          print('Time is up.')
-          if state.data.score == 0: print('Tie game!')
-          else:
-            winner = 'Red'
-            if state.data.score < 0: winner = 'Blue'
-            print('The %s team wins by %d points.' % (winner, abs(state.data.score)))
+            winner = 'ROJO'
+            if state.data.score < 0:
+              winner = 'AZUL'
+            print('El equipo %s gana por %d puntos' % (winner, abs(state.data.score)))
 
   def getProgress(self, game):
-    blue = 1.0 - (game.state.getBlueFood().count() / float(self._initBlueFood))
-    red = 1.0 - (game.state.getRedFood().count() / float(self._initRedFood))
-    moves = len(self.moveHistory) / float(game.length)
-
-    # return the most likely progress indicator, clamped to [0, 1]
-    return min(max(0.75 * max(red, blue) + 0.25 * moves, 0.0), 1.0)
+    captured = 1.0 if (game.state.getCaptures(True) + game.state.getCaptures(False)) > 0 else 0.0
+    moves = len(game.moveHistory) / float(game.length)
+    return min(max(0.75 * captured + 0.25 * moves, 0.0), 1.0)
 
   def agentCrash(self, game, agentIndex):
     if agentIndex % 2 == 0:
@@ -463,6 +479,14 @@ class AgentRules:
     return possibleActions
   filterForAllowedActions = staticmethod( filterForAllowedActions )
 
+  # Función añadida de capturar la bandera 
+  def captureFlag(state, agentState, isRed):
+    """El portador entrega la bandera enemiga en la base de la suya: gana su equipo"""
+    state.data.scoreChange += 1 if isRed else -1
+    agentState.numReturned += agentState.numCarrying
+    agentState.numCarrying = 0
+    state.data._win = True
+  captureFlag = staticmethod(captureFlag)
 
   def applyAction( state, action, agentIndex ):
     """
@@ -488,26 +512,9 @@ class AgentRules:
       isRed = state.isOnRedTeam(agentIndex)
       # Change agent type
       agentState.isPacman = [isRed, state.isRed(agentState.configuration)].count(True) == 1
-      # if he's no longer pacman, he's on his own side, so reset the num carrying timer
-      #agentState.numCarrying *= int(agentState.isPacman)
-      if agentState.numCarrying > 0 and not agentState.isPacman:
-        score = agentState.numCarrying if isRed else -1*agentState.numCarrying
-        state.data.scoreChange += score
-
-        agentState.numReturned += agentState.numCarrying
-        agentState.numCarrying = 0
-
-        redCount = 0
-        blueCount = 0
-        for index in range(state.getNumAgents()):
-          agentState = state.data.agentStates[index]
-          if index in state.getRedTeamIndices():
-            redCount += agentState.numReturned
-          else:
-            blueCount += agentState.numReturned
-        if redCount >= (TOTAL_FOOD/2) - MIN_FOOD or blueCount >= (TOTAL_FOOD/2) - MIN_FOOD:
-          state.data._win = True
-
+      # Captura: lleva la bandera enemiga y pisa la casilla donde empezó la suya
+      if agentState.numCarrying > 0 and agentState.getPosition() == state.getFlagHome(isRed):
+        AgentRules.captureFlag(state, agentState, isRed)
 
     if agentState.isPacman and manhattanDistance( nearest, next ) <= 0.9 :
       AgentRules.consume( nearest, state, state.isOnRedTeam(agentIndex) )
@@ -564,106 +571,22 @@ class AgentRules:
     state.scaredTimer = max( 0, timer - 1 )
   decrementTimer = staticmethod( decrementTimer )
 
-  def dumpFoodFromDeath(state, agentState, agentIndex):
-    if not (DUMP_FOOD_ON_DEATH):
-      # this feature is not turned on
-      return
-
-    if not agentState.isPacman:
-      raise Exception('something is seriously wrong, this agent isnt a pacman!')
-
-    # ok so agentState is this:
-    if (agentState.numCarrying == 0):
-      return
-    
-    # first, score changes!
-    # we HACK pack that ugly bug by just determining if its red based on the first position
-    # to die...
-    dummyConfig = Configuration(agentState.getPosition(), 'North')
-    isRed = state.isRed(dummyConfig)
-
-    # the score increases if red eats dots, so if we are refunding points,
-    # the direction should be -1 if the red agent died, which means he dies
-    # on the blue side
-    scoreDirection = (-1)**(int(isRed) + 1)
-    #state.data.scoreChange += scoreDirection * agentState.numCarrying
-
-    def onRightSide(state, x, y):
-      dummyConfig = Configuration((x, y), 'North')
-      return state.isRed(dummyConfig) == isRed
-
-    # we have food to dump
-    # -- expand out in BFS. Check:
-    #   - that it's within the limits
-    #   - that it's not a wall
-    #   - that no other agents are there
-    #   - that no power pellets are there
-    #   - that it's on the right side of the grid
-    def allGood(state, x, y):
-      width, height = state.data.layout.width, state.data.layout.height
-      food, walls = state.data.food, state.data.layout.walls
-
-      # bounds check
-      if x >= width or y >= height or x <= 0 or y <= 0:
-        return False
-
-      if walls[x][y]:
-        return False
-      if food[x][y]:
-        return False
-
-      # dots need to be on the side where this agent will be a pacman :P
-      if not onRightSide(state, x, y):
-        return False
-
-      if (x,y) in state.data.capsules:
-        return False
-
-      # loop through agents
-      agentPoses = [state.getAgentPosition(i) for i in range(state.getNumAgents())]
-      if (x,y) in agentPoses:
-        return False
-
-      return True
-
-    numToDump = agentState.numCarrying
+# Añadido: para devolver la bandera a su casilla original en caso de que la persona que la lleva se muera
+  def placeFlagAtHome(state, red):
+    x,y = state.getFlagHome(red)
     state.data.food = state.data.food.copy()
-    foodAdded = []
+    state.data.food[x][y] = True
+    state.data._foodAdded = [(x,y)]
+  placeFlagAtHome = staticmethod(placeFlagAtHome)
 
-    def genSuccessors(x, y):
-      DX = [-1, 0, 1]
-      DY = [-1, 0, 1]
-      return [(x + dx, y + dy) for dx in DX for dy in DY]
-
-    # BFS graph search
-    positionQueue = [agentState.getPosition()]
-    seen = set()
-    while numToDump > 0:
-      if not len(positionQueue):
-        raise Exception('Exhausted BFS! uh oh')
-      # pop one off, graph check
-      popped = positionQueue.pop(0)
-      if popped in seen:
-        continue
-      seen.add(popped)
-
-      x, y = popped[0], popped[1]
-      x = int(x)
-      y = int(y)
-      if (allGood(state, x, y)):
-        state.data.food[x][y] = True
-        foodAdded.append((x, y))
-        numToDump -= 1
-
-      # generate successors
-      positionQueue = positionQueue + genSuccessors(x, y)
-
-    state.data._foodAdded = foodAdded
-    # now our agentState is no longer carrying food
+  def returnFlagFromDeath(state, agentState, agentIndex):
+    """Si el agente que muere llevaba la bandera, esta vuelve a su base."""
+    if agentState.numCarrying == 0:
+      return
+    # La bandera que lleva es la del equipo contrario al suyo
+    AgentRules.placeFlagAtHome(state, red = not state.isOnRedTeam(agentIndex))
     agentState.numCarrying = 0
-    pass
-
-  dumpFoodFromDeath = staticmethod(dumpFoodFromDeath)
+  returnFlagFromDeath = staticmethod(returnFlagFromDeath)
 
   def checkDeath( state, agentIndex):
     agentState = state.data.agentStates[agentIndex]
@@ -680,7 +603,7 @@ class AgentRules:
         if manhattanDistance( ghostPosition, agentState.getPosition() ) <= COLLISION_TOLERANCE:
           # award points to the other team for killing Pacmen
           if otherAgentState.scaredTimer <= 0:
-            AgentRules.dumpFoodFromDeath(state, agentState, agentIndex)
+            AgentRules.returnFlagFromDeath(state, agentState, agentIndex)
 
             score = KILL_POINTS
             if state.isOnRedTeam(agentIndex):
@@ -694,6 +617,7 @@ class AgentRules:
             if state.isOnRedTeam(agentIndex):
               score = -score
             state.data.scoreChange += score
+            AgentRules.returnFlagFromDeath(state, otherAgentState, index) 
             otherAgentState.isPacman = False
             otherAgentState.configuration = otherAgentState.start
             otherAgentState.scaredTimer = 0
@@ -706,7 +630,7 @@ class AgentRules:
         if manhattanDistance( pacPos, agentState.getPosition() ) <= COLLISION_TOLERANCE:
           #award points to the other team for killing Pacmen
           if agentState.scaredTimer <= 0:
-            AgentRules.dumpFoodFromDeath(state, otherAgentState, agentIndex)
+            AgentRules.returnFlagFromDeath(state, otherAgentState, index)
 
             score = KILL_POINTS
             if not state.isOnRedTeam(agentIndex):
@@ -720,6 +644,7 @@ class AgentRules:
             if state.isOnRedTeam(agentIndex):
               score = -score
             state.data.scoreChange += score
+            AgentRules.returnFlagFromDeath(state, agentState, agentIndex) 
             agentState.isPacman = False
             agentState.configuration = agentState.start
             agentState.scaredTimer = 0
@@ -782,7 +707,7 @@ def readCommand( argv ):
   parser.add_option('--keys3', help='Make agent 3 (second blue player) a keyboard agent', action='store_true',default=False)
   parser.add_option('-l', '--layout', dest='layout',
                     help=default('the LAYOUT_FILE from which to load the map layout; use RANDOM for a random maze; use RANDOM<seed> to use a specified random seed, e.g., RANDOM23'),
-                    metavar='LAYOUT_FILE', default='defaultCapture')
+                    metavar='LAYOUT_FILE', default='flagCapture') #Cambiamos por el mapa nuevo
   parser.add_option('-t', '--textgraphics', action='store_true', dest='textgraphics',
                     help='Display output as text only', default=False)
 
@@ -795,7 +720,7 @@ def readCommand( argv ):
   parser.add_option('-z', '--zoom', type='float', dest='zoom',
                     help=default('Zoom in the graphics'), default=1)
   parser.add_option('-i', '--time', type='int', dest='time',
-                    help=default('TIME limit of a game in moves'), default=1200, metavar='TIME')
+                    help=default('TIME limit of a game in moves'), default=1800, metavar='TIME')
   parser.add_option('-n', '--numGames', type='int',
                     help=default('Number of games to play'), default=1)
   parser.add_option('-f', '--fixRandomSeed', action='store_true',
@@ -877,6 +802,11 @@ def readCommand( argv ):
   # Choose a layout
   import layout
   layouts = []
+
+  # Nuevo: añadir banderas 
+  if options.layout.startswith('RANDOM'):
+    raise Exception('Los mapas RANDOM aún no tienen banderas ni 6 agentes')
+  
   for i in range(options.numGames):
     if options.layout == 'RANDOM':
       l = layout.Layout(randomLayout().split('\n'))
@@ -921,7 +851,7 @@ def loadAgents(isRed, factory, textgraphics, cmdLineArgs):
   except (NameError, ImportError):
     print ('Error: The team "' + factory + '" could not be loaded! ',file=sys.stderr)
     traceback.print_exc()
-    return [None for i in range(2)]
+    return [None for i in range(AGENTS_PER_TEAM)]
 
   args = dict()
   args.update(cmdLineArgs)  # Add command line args with priority
@@ -937,13 +867,13 @@ def loadAgents(isRed, factory, textgraphics, cmdLineArgs):
   except AttributeError:
     print('Error: The team "' + factory + '" could not be loaded! ',file=sys.stderr)
     traceback.print_exc()
-    return [None for i in range(2)]
-
+    return [None for i in range(AGENTS_PER_TEAM)]
+  # CAMBIO
   indexAddend = 0
   if not isRed:
     indexAddend = 1
-  indices = [2*i + indexAddend for i in range(2)]
-  return createTeamFunc(indices[0], indices[1], isRed, **args)
+  indices = [2*i + indexAddend for i in range(AGENTS_PER_TEAM)]   # rojos 0,2,4 / azules 1,3,5
+  return createTeamFunc(*indices, isRed, **args)
 
 def replayGame( layout, agents, actions, display, length, redTeamName, blueTeamName ):
     rules = CaptureRules()
