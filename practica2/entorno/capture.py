@@ -48,7 +48,7 @@ The keys are
   P1: 'a', 's', 'd', and 'w' to move
   P2: 'l', ';', ',' and 'p' to move
 """
-from game import GameStateData
+from entorno.game import GameStateData
 from game import Game
 from game import Directions
 from game import Actions

@@ -230,7 +230,7 @@ class PacmanGraphics:
   def drawAgentObjects(self, state):
     self.agentImages = [] # (agentState, image)
     for index, agent in enumerate(state.agentStates):
-      if agent.isPacman:
+      if not agent.isPacman:
         image = self.drawPacman(agent, index)
         self.agentImages.append( (agent, image) )
       else:
@@ -244,7 +244,7 @@ class PacmanGraphics:
     """
     prevState, prevImage = self.agentImages[agentIndex]
     for item in prevImage: remove_from_screen(item)
-    if newState.isPacman:
+    if not newState.isPacman:
       image = self.drawPacman(newState, agentIndex)
       self.agentImages[agentIndex] = (newState, image )
     else:
@@ -258,7 +258,7 @@ class PacmanGraphics:
 
     if self.agentImages[agentIndex][0].isPacman != agentState.isPacman: self.swapImages(agentIndex, agentState)
     prevState, prevImage = self.agentImages[agentIndex]
-    if agentState.isPacman:
+    if not agentState.isPacman:
       self.animatePacman(agentState, prevState, prevImage)
     else:
       self.moveGhost(agentState, agentIndex, prevState, prevImage)
