@@ -1,10 +1,8 @@
 """
 demo.py - Partida de demostración con el Contract Net a la vista.
 
-  python3 demo.py                    -> tu equipo (rojo) contra baselineTeam, con ventana gráfica
-  python3 demo.py rushTeam           -> contra otro rival
-  python3 demo.py baselineTeam -i 300 -> lo que va después del rival se pasa tal cual a capture.py
-                                        (-q sin ventana, -i 300 menos turnos, -f semilla fija, -z 1.5 zoom...)
+  python3 main.py                    -> tu equipo (rojo) contra baselineTeam, con ventana gráfica
+  python3 main.py MyTeam             -> tu equipo (rojo) contra tu equipo (azul), con ventana gráfica
 
 La ventana muestra la partida; esta consola va contando qué se dicen los agentes.
 """

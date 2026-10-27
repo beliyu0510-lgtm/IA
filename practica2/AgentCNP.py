@@ -1,9 +1,22 @@
+"""Cambios respecto a la entrega 1:
+En la primera entrega, si ambos equipos usan el algoritmo de ContractNet, se quedan bloqueados: los atacantes
+de cada equipo esperan en el centro porque el rival vigila el paso, y como la regla prohíbe pisar casillas
+junto a un fantasma, ninguno avanza y la partida acaba en empate.
+
+Solución: ahora el atacante cuenta los turnos que lleva esperando en el borde sin poder pasar. Al llegar a su
+umbral (entre 4 y 10 turnos, distinto para cada agente) deja de buscar su paso y de evitar a los fantasmas, y va
+directo a la bandera, es decir, se arriesga a pasar. El umbral se elige al azar para que no gane siempre el
+equipo que mueve primero. El contador se reinicia si el agente deja de atacar, si coge la bandera o si lo comen.
+
+Resultado: entre equipos iguales ya no se empata siempre, y contra el baseline se siguen ganando todas las
+partidas."""
 
 from entorno.captureAgents import CaptureAgent
 from entorno.game import Directions, Actions
 from TeamComut import TeamBus
 from ComutAgent import ComutAgent
 import heapq
+import random
 
 ATACAR = 'ATACAR BANDERA'
 DEFENDER = 'DEFENDER BANDERA'
@@ -11,6 +24,8 @@ PATRULLAR = 'PATRULLA CENTRAL'
 COOLDOWN_ATACAR = 15 # tirnos mínimos entre dos anuncios de la misma tarea
 COOLDOWN_DEFENDER = 8
 COOLDOWN_LIBERAR = 15 #turnos sin amenaza tras los que un defensor se libera
+ESPERA_MIN = 4 #tirnos esperando en el borde antes de arriesgarse
+ESPERA_MAX = 10
 
 class AgentCNP(ComutAgent):
 
@@ -24,7 +39,9 @@ class AgentCNP(ComutAgent):
         self.mateTask = {} #lo que hacen mis compañeros
         self.lastSeen = {} #tarea que se anunció por última vez
         self.calm = 0 #Turnos seguidos sin amenaza
-
+        self.espera = 0 #Turnos esperando en el borde
+        self.umbral = random.randint(ESPERA_MIN, ESPERA_MAX)
+        
     def chooseAction(self, gameState):
         self.turn += 1
         # Leer el buzón
@@ -56,6 +73,12 @@ class AgentCNP(ComutAgent):
         # La tarea deja de ser necesaria
         self.liberarTarea(gameState)
 
+        pos = gameState.getAgentPosition(self.index)
+        if (self.currentTask != ATACAR or gameState.getAgentState(self.index).numCarrying > 0 or pos == self.startPos):
+            self.espera = 0 
+        elif (self.centerCells and not gameState.getAgentState(self.index).isPacman
+            and min(self.getMazeDistance(pos, c) for c in self.centerCells) <= 2):
+            self.espera += 1 # estoy en el borde sin haber pasado
         target = self.targetFor(gameState)
         action = self.planRoute(gameState, target)
         return action if action else Directions.STOP
@@ -153,6 +176,8 @@ class AgentCNP(ComutAgent):
                     return invasor
                 return self.nextPatrolCell(gameState)
             cruce = self.myCrossing()
+            if self.espera >= self.umbral:
+                cruce = None
             if (not gameState.getAgentState(self.index).isPacman and cruce is not None and gameState.getAgentPosition(self.index) != cruce):
                 return cruce
             return gameState.getFlagHome(not self.red)
@@ -205,12 +230,13 @@ class AgentCNP(ComutAgent):
         """Coste de entrar en cada celda. En mi lado 1"""
         fantasmas = [gameState.getAgentPosition(i) for i in self.getOpponents(gameState) if not gameState.getAgentState(i).isPacman
                      and gameState.getAgentPosition(i) is not None]
+        arriesgo = self.espera >= self.umbral
         cache = {}
         def coste(celda):
             if celda in cache:
                 return cache[celda]
             c = 1
-            if fantasmas and gameState.isRed(celda) != self.red:
+            if fantasmas and not arriesgo and gameState.isRed(celda) != self.red:
                 d = min(self.getMazeDistance(celda, g) for g in fantasmas)
                 if d<=1:
                     c = None
