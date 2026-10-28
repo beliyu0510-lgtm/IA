@@ -9,13 +9,16 @@ Genera resultados_<rojo>_vs_<azul>.csv y resultados_<rojo>_vs_<azul>.png
 """
 import sys, os, csv, io, contextlib, importlib, collections
 
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(AQUI, '..'))
+
 for nombre in ['util', 'game', 'layout', 'distanceCalculator', 'captureAgents', 'graphicsUtils',
                'textDisplay', 'keyboardAgents', 'captureGraphicsDisplay']:
     try:
         sys.modules[nombre] = importlib.import_module('entorno.' + nombre)
     except ImportError:
         pass
-from entorno import capture
+import entorno.capture as capture
 
 MI_EQUIPO = 'myTeam'
 LARGO = 1800                 # movimientos máximos por partida (-i)

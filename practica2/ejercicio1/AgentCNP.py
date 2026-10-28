@@ -11,6 +11,12 @@ equipo que mueve primero. El contador se reinicia si el agente deja de atacar, s
 Resultado: entre equipos iguales ya no se empata siempre, y contra el baseline se siguen ganando todas las
 partidas."""
 
+import os
+import sys
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(AQUI, '..'))
+
 from entorno.captureAgents import CaptureAgent
 from entorno.game import Directions, Actions
 from TeamComut import TeamBus

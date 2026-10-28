@@ -10,6 +10,9 @@ import sys, os
 
 import importlib
 
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(AQUI, '..'))
+
 # Los archivos de Berkeley dentro de "entorno" se importan unos a otros por su nombre suelto
 # (from util import *) y otros con prefijo (from entorno.game import ...). Para que no se
 # mezclen, cada módulo se registra con AMBOS nombres, apuntando al mismo objeto.
@@ -19,7 +22,7 @@ for nombre in ['util', 'game', 'layout', 'distanceCalculator', 'captureAgents', 
         sys.modules[nombre] = importlib.import_module('entorno.' + nombre)
     except ImportError:
         pass                          # p. ej. sin tkinter no hay gráficos; se avisará al usarlos
-from entorno import capture
+import entorno.capture as capture
 import TeamComut                         # el MISMO módulo que importa tu myTeam.py
 
 # ---------------------------------------------------------------------------
@@ -61,20 +64,33 @@ TeamComut.TeamBus.broadcast = broadcast
 PAUSA = 0.1                 # segundos por movimiento en la ventana (sube el número para verlo más lento)
 MI_EQUIPO = 'myTeam'        # nombre del archivo de tu equipo (sin .py)
 
+
 def buscar(nombre):
-    """capture.py solo mira en la carpeta actual; aquí se busca el equipo también en otros sitios."""
+    """Busca el archivo del equipo en las carpetas habituales."""
     aqui = os.path.dirname(os.path.abspath(__file__))
-    for carpeta in [os.getcwd(), aqui, os.path.join(aqui, 'entorno')]:
-        ruta = os.path.join(carpeta, nombre + '.py')
-        if os.path.exists(ruta):
+    carpetas = [
+        os.getcwd(),
+        aqui,
+        os.path.join(aqui, 'entorno'),
+        os.path.join(aqui, '..', 'entorno'),
+        os.path.join(aqui, '..'),
+    ]
+
+    for carpeta in carpetas:
+        ruta = os.path.abspath(os.path.join(carpeta, nombre + '.py'))
+        if os.path.isfile(ruta):
             return ruta
-    raise SystemExit('No encuentro %s.py (busqué en %s, %s y %s/entorno). Pon su ruta completa o '
-                     'cambia MI_EQUIPO en demo.py.' % (nombre, os.getcwd(), aqui, aqui))
+
+    raise SystemExit(
+        f"No encuentro {nombre}.py. "
+        f"Carpetas comprobadas: {[os.path.abspath(c) for c in carpetas]}"
+    )
+
 
 def buscarLayout(nombre = 'flagCapture'):
     """layout.py solo busca layouts/ desde donde lanzas; aquí también en entorno/layouts."""
     aqui = os.path.dirname(os.path.abspath(__file__))
-    for carpeta in [os.getcwd(), aqui, os.path.join(aqui, 'entorno')]:
+    for carpeta in [os.getcwd(), aqui, os.path.join(aqui, 'entorno'), os.path.join(aqui, '..', 'entorno')]:
         ruta = os.path.join(carpeta, 'layouts', nombre + '.lay')
         if os.path.exists(ruta):
             return ruta

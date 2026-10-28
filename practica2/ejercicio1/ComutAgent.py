@@ -1,3 +1,8 @@
+import os
+import sys
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(AQUI, '..'))
 from entorno.captureAgents import CaptureAgent
 
 class ComutAgent(CaptureAgent):
